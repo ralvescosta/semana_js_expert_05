@@ -1,31 +1,42 @@
 import UploadHandler from '../../src/uploadHandler'
 import fs from 'fs'
 import {jest} from '@jest/globals'
-import fs from 'fs'
 import TestUtil from '../_util/testUtil'
+import { logger } from '../../src/logger.js'
 
 describe('#UploadHandler', () => {
+  const ioObj = {
+    to: (id) => ioObj,
+    emit: (event, message) => {}
+  }
+  beforeEach(() => {
+    jest.spyOn(logger, 'info')
+        .mockImplementation()
+  })
   describe('#registerEvents', () => {
-    const ioObj = {
-      to: (id) => ioObj,
-      emit: (event, message) => {}
-    }
+    
     test('should call onFile and onFinish functions on Busboy instance', () => {
-      const uploadHandler = new UploadHandler({io: ioObj, socketId: '01'})
+      const uploadHandler = new UploadHandler({
+        io: ioObj,
+        socketId: '01'
+    })
 
-      jest.spyOn(uploadHandler, uploadHandler.onFile.name).mockResolvedValueOnce()
-      const headers = {
-        'content-type': 'multipart/form-fata; boundary='
-      }
-      const onFinish = jest.fn
+    jest.spyOn(uploadHandler, uploadHandler.onFile.name)
+        .mockResolvedValue()
 
-      const busboyInstance = uploadHandler.registerEvents(headers, onFinish)
-      const fileStream = TestUtil.generateReadableStream(['chunk', 'of', 'data'])
-      busboyInstance.emit('file', 'fieldname', fileStream, 'filename.txt')
-      busboyInstance.listeners('finish')[0].call()
+    const headers = {
+        'content-type': 'multipart/form-data; boundary='
+    }
+    const onFinish = jest.fn()
+    const busboyInstance = uploadHandler.registerEvents(headers, onFinish)
 
-      expect(uploadHandler.onFile).toHaveBeenCalled()
-      expect(onFinish).toHaveBeenCalled()
+    const fileStream = TestUtil.generateReadableStream(['chunk', 'of', 'data'])
+    busboyInstance.emit('file', 'fieldname', fileStream, 'filename.txt')
+
+    busboyInstance.listeners("finish")[0].call()
+
+    expect(uploadHandler.onFile).toHaveBeenCalled()
+    expect(onFinish).toHaveBeenCalled()
     })
   })
 
@@ -38,11 +49,31 @@ describe('#UploadHandler', () => {
         socketId: '01',
         downloadsFolder: downloadsFolder
       })
-      const onData = jest.fn
-      jest.spyOn(fs, fs.createWriteStream.name).mockImplementation(() => TestUtil.generateWritableStream(onData))
-      jest.spyOn(handler, handler.handleFileBytes.name)
+      const onDataWritable = jest.fn()
+      jest.spyOn(fs, fs.createWriteStream.name).mockImplementation(() => TestUtil.generateWritableStream(onDataWritable))
 
+      const onDataTransforme = jest.fn()
+      jest.spyOn(handler, handler.handleFileBytes.name).mockImplementation(() => TestUtil.generateTransformStream(onDataTransforme))
 
+      const params = {
+        fieldname: 'video',
+        file: TestUtil.generateReadableStream(chunks),
+        filename: 'mockFile.mov'
+      }
+
+      await handler.onFile(...Object.values(params))
+
+      expect(onDataWritable.mock.calls.join()).toEqual(chunks.join())
+      expect(onDataTransforme.mock.calls.join()).toEqual(chunks.join())
+
+      const expectedFileName = `${handler.downloadsFolder}/${params.filename}`
+      expect(fs.createWriteStream).toHaveBeenCalledWith(expectedFileName)
+    })
+  })
+
+  describe('#handleFileByte', () => {
+    test('should call emit function and it is a transform stream', async () => {
+      
     })
   })
 })
