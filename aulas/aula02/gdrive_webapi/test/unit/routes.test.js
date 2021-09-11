@@ -1,4 +1,6 @@
 import Routes from '../../src/routes.js'
+import { logger } from '../../src/logger.js'
+
 import {jest} from '@jest/globals'
 describe('#Routes test suit', () => {
   const defaultParams = {
@@ -16,6 +18,10 @@ describe('#Routes test suit', () => {
     },
     values: () => Object.values(defaultParams)
   }
+  beforeEach(() => {
+    jest.spyOn(logger, 'info')
+        .mockImplementation()
+  })
   describe('#setSocket', () => {
     test('setSocket should store io instance', () => {
       const routes = new Routes()

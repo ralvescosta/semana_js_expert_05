@@ -1,8 +1,14 @@
 import FileHelper from '../../src/fileHelper'
-import fs from 'fs'
+import { logger } from '../../src/logger.js'
+
 import {jest} from '@jest/globals'
+import fs from 'fs'
 
 describe('#FileHelper', () => {
+  beforeEach(() => {
+    jest.spyOn(logger, 'info')
+        .mockImplementation()
+  })
   describe('#getFileStatus', () => {
     test('it should return file statuses in correct format', async () => {
       const statsMock = {
